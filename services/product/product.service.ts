@@ -20,6 +20,8 @@ export default class ProductService extends Service {
   constructor(broker: any) {
     super(broker);
 
+    this.repository = new ProductRepository(broker);
+
     this.parseServiceSchema({
       name: 'product',
       settings: {
@@ -92,6 +94,27 @@ export default class ProductService extends Service {
           },
           handler: this.getWithAccount,
         },
+        getTopSellingProducts: {
+          params: {
+            limit: { type: 'number', optional: true, default: 10 }
+          },
+          handler: async (ctx: any) => {
+            return this.repository.getTopSellingProducts(ctx.params.limit);
+          }
+        },
+        getSalesByCategory: {
+          handler: async () => {
+            return this.repository.getSalesByCategory();
+          }
+        },
+        getLowStockProducts: {
+          params: {
+            threshold: { type: 'number', optional: true, default: 10 }
+          },
+          handler: async (ctx: any) => {
+            return this.repository.getLowStockProducts(ctx.params.threshold);
+          }
+        }
       },
       created: this.serviceCreated,
     } as ServiceSchema);

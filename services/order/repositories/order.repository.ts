@@ -41,4 +41,67 @@ export class OrderRepository extends PostgresBaseRepository<Order> implements Or
       user
     };
   }
+
+  // คำนวณยอดขายรวมตามช่วงเวลา
+  async getSalesByDateRange(startDate: Date, endDate: Date): Promise<Array<{ date: string; totalSales: number; orderCount: number }>> {
+    const query = this.repository
+      .createQueryBuilder('order')
+      .select('DATE(order.createdAt)', 'date')
+      .addSelect('SUM(order.total)', 'totalSales')
+      .addSelect('COUNT(order.id)', 'orderCount')
+      .where('order.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .andWhere('order.status = :status', { status: 'completed' })
+      .groupBy('DATE(order.createdAt)')
+      .orderBy('date', 'ASC');
+
+    return query.getRawMany();
+  }
+
+  // คำนวณยอดขายรวมตามสินค้า
+  async getSalesByProduct(): Promise<Array<{ productId: string; productName: string; totalQuantity: number; totalSales: number }>> {
+    const query = this.repository
+      .createQueryBuilder('order')
+      .select('item.productId', 'productId')
+      .addSelect('item.name', 'productName')
+      .addSelect('SUM(item.quantity)', 'totalQuantity')
+      .addSelect('SUM(item.quantity * item.price)', 'totalSales')
+      .innerJoin('order.items', 'item')
+      .where('order.status = :status', { status: 'completed' })
+      .groupBy('item.productId')
+      .addGroupBy('item.name')
+      .orderBy('totalSales', 'DESC');
+
+    return query.getRawMany();
+  }
+
+  // คำนวณยอดขายรวมตามผู้ใช้
+  async getSalesByUser(): Promise<Array<{ userId: string; userName: string; totalOrders: number; totalSales: number }>> {
+    const query = this.repository
+      .createQueryBuilder('order')
+      .select('order.userId', 'userId')
+      .addSelect('user.name', 'userName')
+      .addSelect('COUNT(order.id)', 'totalOrders')
+      .addSelect('SUM(order.total)', 'totalSales')
+      .innerJoin('user', 'user', 'user.id = order.userId')
+      .where('order.status = :status', { status: 'completed' })
+      .groupBy('order.userId')
+      .addGroupBy('user.name')
+      .orderBy('totalSales', 'DESC');
+
+    return query.getRawMany();
+  }
+
+  // คำนวณสถิติการชำระเงิน
+  async getPaymentStatistics(): Promise<Array<{ paymentMethod: string; totalOrders: number; totalAmount: number }>> {
+    const query = this.repository
+      .createQueryBuilder('order')
+      .select('order.paymentMethod', 'paymentMethod')
+      .addSelect('COUNT(order.id)', 'totalOrders')
+      .addSelect('SUM(order.total)', 'totalAmount')
+      .where('order.status = :status', { status: 'completed' })
+      .groupBy('order.paymentMethod')
+      .orderBy('totalAmount', 'DESC');
+
+    return query.getRawMany();
+  }
 } 
